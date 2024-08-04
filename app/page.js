@@ -1,21 +1,21 @@
-"use client";
-import Image from "next/image";
-import { useEffect, useState } from 'react';
-import { firestore } from '../firebase'; // Adjusted the import path
-import { Box, Typography, Modal, Stack, TextField, Button } from '@mui/material';
-import { collection, query, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+"use client"
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, TextField } from '@mui/material';
+import { collection, query, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
+import { firestore } from '../firebase'; // Adjust the import path as necessary
 
 export default function Home() {
-  const [item, setItem] = useState('');
   const [pantry, setPantry] = useState([]);
-  const [open, setOpen] = useState(false); // Added useState for open
-
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const [name, setName] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAllItems, setShowAllItems] = useState(false);
 
   const updatePantry = async () => {
     const pantryRef = query(collection(firestore, 'pantry'));
-    const docs = await getDocs(pantryRef); // Corrected function name
+    const docs = await getDocs(pantryRef);
     const pantryList = [];
     docs.forEach((doc) => {
       pantryList.push({
@@ -26,54 +26,106 @@ export default function Home() {
     setPantry(pantryList);
   };
 
-  const addItem = async (item) => {
-    const docRef = doc(collection(firestore, 'pantry'), item);
+  const addItem = async (name, quantity, expiryDate) => {
+    const docRef = doc(collection(firestore, 'pantry'), name);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      const { quantity } = docSnap.data();
+      const { quantity: existingQuantity } = docSnap.data();
       await setDoc(docRef, {
-        quantity: quantity + 1,
+        quantity: existingQuantity + parseInt(quantity),
+        expiryDate,
       });
     } else {
       await setDoc(docRef, {
-        quantity: 1,
+        quantity: parseInt(quantity),
+        expiryDate,
       });
     }
     await updatePantry();
   };
 
-  const removeItem = async (item) => {
-    const docRef = doc(collection(firestore, 'pantry'), item);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const { quantity } = docSnap.data();
-      if (quantity === 1) {
-        await deleteDoc(docRef);
-      } else {
-        await setDoc(docRef, {
-          quantity: quantity - 1,
-        });
-      }
-      await updatePantry();
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsAddingItem(true);
+    await addItem(name, quantity, expiryDate);
+    setIsAddingItem(false);
+    setName('');
+    setQuantity('');
+    setExpiryDate('');
   };
 
   useEffect(() => {
     updatePantry();
   }, []);
 
+  const filteredPantry = pantry.find((item) =>
+      item.name.toLowerCase() === searchTerm.toLowerCase()
+  );
+
   return (
-      <Box width="100vw" height="100vh" display="flex" justifyContent="center" gap={2}>
-        <Modal open={open} onClose={handleClose}>
-          <Box position="absolute" top="50%" left="50%" bgcolor="white" p={2} width={400} boxShadow={24} display="flex" sx={{ transform: "translate(-50%, -50%)" }}>
-            <Typography variant="h6">Add Item</Typography>
-            <Stack width="100%" direction="row" spacing={2}>
-              <TextField label="Item" value={item} onChange={(e) => setItem(e.target.value)} />
-              <Button variant="contained" onClick={() => addItem(item)}>Add</Button>
-            </Stack>
-          </Box>
-        </Modal>
+      <Box width="100vw" height="100vh" display="flex" flexDirection="column" justifyContent="center" alignItems="center" gap={2}>
+        <TextField
+            label="Search Items"
+            variant="outlined"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ marginBottom: '20px', width: '80%' }}
+        />
         <Typography variant="h1">Pantry Tracker</Typography>
+        <form onSubmit={handleSubmit} className="form" style={{ width: '50%' }}>
+          <Typography variant="h6" style={{ fontSize: '30px', textAlign: 'center', color: 'green' }}>Add Item Form</Typography>
+          <TextField
+              type="text"
+              value={name}
+              placeholder="Enter item name"
+              onChange={(e) => setName(e.target.value)}
+              required
+              fullWidth
+              style={{ marginBottom: '10px' }}
+          />
+          <TextField
+              type="number"
+              value={quantity}
+              placeholder="Enter Quantity"
+              onChange={(e) => setQuantity(e.target.value)}
+              required
+              fullWidth
+              style={{ marginBottom: '10px' }}
+          />
+          <TextField
+              type="date"
+              label="Expiry Date"
+              InputLabelProps={{ shrink: true }}
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              required
+              fullWidth
+              style={{ marginBottom: '10px' }}
+          />
+          <Button type="submit" variant="contained" fullWidth>{isAddingItem ? 'Adding Item...' : 'Add Item'}</Button>
+        </form>
+        <Button variant="outlined" onClick={() => setShowAllItems(!showAllItems)} style={{ marginTop: '20px' }}>
+          {showAllItems ? 'Hide All Items' : 'Show All Items'}
+        </Button>
+        <Box mt={2} width="80%" display="flex" flexDirection="column" alignItems="center">
+          {showAllItems ? (
+              pantry.map(item => (
+                  <Box key={item.name} p={2} width="100%" display="flex" justifyContent="space-between" alignItems="center" borderBottom="1px solid #ccc">
+                    <Typography variant="body1" style={{ flex: 1 }}>{item.name}</Typography>
+                    <Typography variant="body1" style={{ flex: 1, textAlign: 'center' }}>Quantity: {item.quantity}</Typography>
+                    <Typography variant="body1" style={{ flex: 1, textAlign: 'right' }}>Expiry Date: {item.expiryDate}</Typography>
+                  </Box>
+              ))
+          ) : filteredPantry ? (
+              <Box key={filteredPantry.name} p={2} width="100%" display="flex" justifyContent="space-between" alignItems="center" borderBottom="1px solid #ccc">
+                <Typography variant="body1" style={{ flex: 1 }}>{filteredPantry.name}</Typography>
+                <Typography variant="body1" style={{ flex: 1, textAlign: 'center' }}>Quantity: {filteredPantry.quantity}</Typography>
+                <Typography variant="body1" style={{ flex: 1, textAlign: 'right' }}>Expiry Date: {filteredPantry.expiryDate}</Typography>
+              </Box>
+          ) : searchTerm ? (
+              <Typography variant="body1">No items found</Typography>
+          ) : null}
+        </Box>
       </Box>
   );
 }
