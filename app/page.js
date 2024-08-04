@@ -73,7 +73,7 @@ export default function Home() {
         />
         <Typography variant="h1">Pantry Tracker</Typography>
         <form onSubmit={handleSubmit} className="form" style={{ width: '50%' }}>
-          <Typography variant="h6" style={{ fontSize: '30px', textAlign: 'center', color: 'green' }}>Add Item Form</Typography>
+          <Typography variant="h6" style={{ fontSize: '30px', textAlign: 'center', color: 'green' }}>Add Item </Typography>
           <TextField
               type="text"
               value={name}
