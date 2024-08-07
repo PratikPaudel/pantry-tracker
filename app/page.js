@@ -26,6 +26,20 @@ export default function Home() {
     setPantry(pantryList);
   };
 
+  const removeItemByOne = async (name, quantity, expiryDate) => {
+    const docRef = doc(collection(firestore, 'pantry'), name);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const { quantity: existingQuantity } = docSnap.data();
+      if (existingQuantity > 0) {
+        await setDoc(docRef, {
+          quantity: existingQuantity - 1,
+          expiryDate: expiryDate,
+        });
+      }
+    }
+    await updatePantry();
+  };
   const addItem = async (name, quantity, expiryDate) => {
     const docRef = doc(collection(firestore, 'pantry'), name);
     const docSnap = await getDoc(docRef);
@@ -119,7 +133,13 @@ export default function Home() {
           ) : filteredPantry ? (
               <Box key={filteredPantry.name} p={2} width="100%" display="flex" justifyContent="space-between" alignItems="center" borderBottom="1px solid #ccc">
                 <Typography variant="body1" style={{ flex: 1 }}>{filteredPantry.name}</Typography>
-                <Typography variant="body1" style={{ flex: 1, textAlign: 'center' }}>Quantity: {filteredPantry.quantity}</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Button variant="contained" color="success" justifyContent="center" alignItems="center" sx={{ marginRight: '10px' }} onClick={() => addItem(filteredPantry.name, 1, filteredPantry.expiryDate)}>Add</Button>
+                <Button variant="outlined" color="error" justifyContent="center" alignItems="center" sx={{ marginRight: '10px' }} onClick={() => removeItemByOne(filteredPantry.name, 1, filteredPantry.expiryDate)}>Remove</Button>
+                  <Typography variant="h6" gutterBottom>
+                    Quantity: {filteredPantry.quantity}
+                  </Typography> 
+                </Box>
                 <Typography variant="body1" style={{ flex: 1, textAlign: 'right' }}>Expiry Date: {filteredPantry.expiryDate}</Typography>
               </Box>
           ) : searchTerm ? (
